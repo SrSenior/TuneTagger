@@ -47,7 +47,7 @@ Backend local en ASP.NET Core
         ↓
 Generación de fingerprint con Chromaprint/fpcalc
         ↓
-Consulta a AcoustID / MusicBrainz
+Consulta a AcoustID
         ↓
 Resultados en interfaz web
         ↓
@@ -63,10 +63,8 @@ La aplicación no está pensada como una web pública de subida de archivos. En 
 - C#
 - ASP.NET Core Web API
 - Entity Framework Core
-- SQLite
 - Chromaprint / fpcalc
 - AcoustID API
-- MusicBrainz API
 
 ### Frontend
 
@@ -94,18 +92,6 @@ La aplicación no está pensada como una web pública de subida de archivos. En 
 - Sugerencia de nombre de archivo.
 - Confirmación manual antes de realizar cambios.
 
-### Funcionalidades futuras
-
-- Procesamiento por lotes.
-- Escaneo de carpetas completas.
-- Edición manual de metadatos.
-- Actualización de tags ID3.
-- Historial de archivos procesados.
-- Exportación de resultados en CSV o JSON.
-- Detección de duplicados.
-- Reglas personalizadas para nombres de archivo.
-- Versión portable para Windows.
-
 ## Estado del proyecto
 
 El proyecto se encuentra en fase inicial de desarrollo.
@@ -122,44 +108,6 @@ Esta sección se actualizará conforme avance el desarrollo del proyecto.
 - Node.js
 - Git
 - Visual Studio Code o editor equivalente
-
-### Clonar el repositorio
-
-```bash
-git clone URL_DEL_REPOSITORIO
-cd TuneTagger
-```
-
-### Estructura esperada del proyecto
-
-```txt
-TuneTagger/
-│
-├── backend/
-│   └── TuneTagger.Api/
-│
-├── frontend/
-│   └── TuneTagger.Client/
-│
-├── docs/
-│
-└── README.md
-```
-
-### Ejecutar el backend
-
-```bash
-cd backend/TuneTagger.Api
-dotnet run
-```
-
-### Ejecutar el frontend
-
-```bash
-cd frontend/TuneTagger.Client
-npm install
-npm run dev
-```
 
 ## Uso previsto
 
