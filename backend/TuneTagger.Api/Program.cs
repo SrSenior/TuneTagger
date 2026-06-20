@@ -1,3 +1,5 @@
+using TuneTagger.Api.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -48,16 +50,17 @@ app.MapGet("/api/health", () =>
 //Endpoint de prueba para simular el análisis de una pista de música y devolver resultados ficticios
 app.MapGet("/api/tracks/mock-analysis", () =>
 {
-    return Results.Ok(new
-    {
-        originalFileName = "Black Clover Opening 10 Full.mp3",
-        title = "Black Catcher",
-        artist = "Vickeblanka",
-        album = "Black Catcher",
-        suggestedFileName = "Vickeblanka - Black Catcher.mp3",
-        confidence = 0.94,
-        status = "mock"
-    });
+    var result = new TrackAnalysisResult(
+        OriginalFileName: "Black Clover Opening 10 Full.mp3",
+        Title: "Black Catcher",
+        Artist: "Vickeblanka",
+        Album: "Black Catcher",
+        SuggestedFileName: "Vickeblanka - Black Catcher.mp3",
+        Confidence: 0.94,
+        Status: "mock"
+    );
+
+    return Results.Ok(result);
 })
 .WithName("GetMockTrackAnalysis");
 
