@@ -11,3 +11,5 @@ De manera homóloga, haré una versión en inglés de este documento para cualqu
 Para empezar, se ha implementado una API que está escuchando peticiones, funciona en localhost y actualmente tiene dos endpoints funcionales, un método get que analiza una canción y devuelve los datos de la misma, y un método post donde el usuario sube un archivo mp3.
 
 También se creó un modelo que funciona para almacenar los resultados del trackAnalysis
+
+Se añadió fpcalc.exe, esta es una librería que nos da la fingerprint de las canciones, con las que luego vamos a consultar sus datos a AcoustID
