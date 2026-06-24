@@ -1,6 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudiocode,node,react
 # Edit at https://www.toptal.com/developers/gitignore?templates=csharp,dotnetcore,visualstudiocode,node,react
 
+# External binaries
+backend/TuneTagger.Api/Tools/fpcalc.exe
+backend/TuneTagger.Api/Tools/fpcalc
+
 ## Elementos añadidos manualmente
 .env
 .env.*
