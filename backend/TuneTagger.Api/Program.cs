@@ -1,6 +1,11 @@
 using TuneTagger.Api.Models;
 using System.Diagnostics;//System.Diagnostics nos permite ejecutar procesos externos desde C#, en caso de esta aplicación fpcalc.exe
 
+// Librerías necesarias para la compresión de datos y el manejo de encabezados HTTP. Todo esto para el uso e integración de AcoustID
+using System.IO.Compression; //System.IO.Compression nos permite trabajar con archivos comprimidos, como zip, en C#. En este caso, se utiliza para comprimir la petición POST a AcoustID, ya que la API de AcoustID requiere que los datos se envíen en formato gzip.
+using System.Net.Http.Headers; //System.Net.Http.Headers nos permite trabajar con encabezados HTTP en C#. En este caso, se utiliza para establecer el tipo de compresión que vamos a usar en la petición a AcoustID
+using System.Text; //System.Text nos permite trabajar con codificaciones de texto en C#. 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
