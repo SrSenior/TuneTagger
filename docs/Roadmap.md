@@ -38,10 +38,10 @@ Generación de nombre sugerido
 - `fpcalc.exe` probado manualmente desde la terminal con un archivo MP3.
 - Ejecutar `fpcalc` desde C#.
 - Obtener `duration` y `fingerprint`.
+- Consultar AcoustID usando esos datos.
 
 ### Próximos pasos
 
-- Consultar AcoustID usando esos datos.
 - Procesar la respuesta de AcoustID.
 - Seleccionar la coincidencia con mayor confianza.
 - Devolver una respuesta limpia al frontend.

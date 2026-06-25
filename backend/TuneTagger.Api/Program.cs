@@ -154,12 +154,82 @@ app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configu
             .FirstOrDefault(line => line.StartsWith("FINGERPRINT="))
             ?.Replace("FINGERPRINT=", "");
 
+        // Verificar si se pudo extraer la duración y la huella digital correctamente
         if (string.IsNullOrWhiteSpace(duration) || string.IsNullOrWhiteSpace(fingerprint))
         {
             return Results.Problem("Could not parse fpcalc output.");
         }
 
-        //  Devolver la información del archivo subido junto con la duración y la huella digital obtenidas de fpcalc.exe
+        // Obtener la URL base, que tenemos en appsettings.Development.json, y la clave de API de AcoustID, que almacenamos con dotnet user-secrets.
+        var acoustIdBaseUrl = configuration["AcoustId:BaseUrl"];
+        var acoustIdApiKey = configuration["AcoustId:ApiKey"];
+
+        // Verificar si la URL base de AcoustID está configurada
+        if (string.IsNullOrWhiteSpace(acoustIdBaseUrl))
+        {
+            return Results.Problem("AcoustID base URL is not configured.");
+        }
+
+        // Verificar si la clave de API de AcoustID está configurada
+        if (string.IsNullOrWhiteSpace(acoustIdApiKey))
+        {
+            return Results.Problem("AcoustID API key is not configured.");
+        }
+
+        // Preparar los datos del formulario para enviar a la API de AcoustID.
+        var formData = new Dictionary<string, string>
+        {
+            ["client"] = acoustIdApiKey,
+            ["duration"] = duration,
+            ["fingerprint"] = fingerprint,
+            ["meta"] = "recordings releasegroups compress",
+            ["format"] = "json"
+        };
+
+        // Convertir los datos del formulario a una cadena de consulta URL codificada
+        var formBody = string.Join("&", formData.Select(pair =>
+            $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"
+        ));
+
+        // Codificar la cadena de consulta a bytes utilizando UTF-8
+        var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
+
+        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+        byte[] compressedBody;
+
+        using (var outputStream = new MemoryStream())
+        {
+            using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                gzipStream.Write(formBodyBytes, 0, formBodyBytes.Length);
+            }
+
+            compressedBody = outputStream.ToArray();
+        }
+
+        // Crear un cliente HTTP para enviar la solicitud POST a la API de AcoustID
+        using var httpClient = new HttpClient();
+        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
+        using var content = new ByteArrayContent(compressedBody);
+
+        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+        content.Headers.ContentEncoding.Add("gzip");
+
+        // Enviar la solicitud POST a la API de AcoustID y obtener la respuesta
+        var acoustIdResponse = await httpClient.PostAsync(acoustIdBaseUrl, content);
+        // Leer la respuesta de la API de AcoustID como una cadena JSON
+        var acoustIdJson = await acoustIdResponse.Content.ReadAsStringAsync();  
+
+        // Verificar si la respuesta de la API de AcoustID indica un error (código de estado HTTP distinto de 2xx)
+        if (!acoustIdResponse.IsSuccessStatusCode)
+        {
+            return Results.Problem(
+                $"AcoustID request failed with status code {(int)acoustIdResponse.StatusCode}: {acoustIdJson}"
+            );
+        }
+
+        // Devolver un objeto JSON con la información del archivo subido, la duración, la huella digital y la respuesta de AcoustID
         return Results.Ok(new
         {
             originalFileName = file.FileName,
@@ -167,7 +237,8 @@ app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configu
             sizeInBytes = file.Length,
             duration,
             fingerprint,
-            status = "fingerprinted"
+            acoustIdRawResponse = acoustIdJson,
+            status = "acoustid-lookup-completed"
         });
     
     }
