@@ -36,11 +36,11 @@ Generación de nombre sugerido
 - Endpoint `POST /api/tracks/analyze` capaz de recibir archivos.
 - `fpcalc.exe` ubicado en la carpeta `Tools/`.
 - `fpcalc.exe` probado manualmente desde la terminal con un archivo MP3.
+- Ejecutar `fpcalc` desde C#.
+- Obtener `duration` y `fingerprint`.
 
 ### Próximos pasos
 
-- Ejecutar `fpcalc` desde C#.
-- Obtener `duration` y `fingerprint`.
 - Consultar AcoustID usando esos datos.
 - Procesar la respuesta de AcoustID.
 - Seleccionar la coincidencia con mayor confianza.
