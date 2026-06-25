@@ -12,4 +12,5 @@ Para empezar, se ha implementado una API que está escuchando peticiones, funcio
 
 También se creó un modelo que funciona para almacenar los resultados del trackAnalysis
 
-Se añadió fpcalc.exe, esta es una librería que nos da la fingerprint de las canciones, con las que luego vamos a consultar sus datos a AcoustID
+Se añadió fpcalc.exe, esta es una librería que nos da la fingerprint de las canciones, con las que luego vamos a consultar sus datos a AcoustID. En el readme ubicado en /backend/TuneTagger.Api/Tools se indican cosas importantes de fpcalc en relación con su ubicación principalmente.
+En csproj añadimos una indicación de que fpcalc.exe se copiara a backend/TuneTagger.Api/bin/Debug/net10.0/Tools/fpcalc.exe porque sino daría error, al menos durante el desarrollo.
