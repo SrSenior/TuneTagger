@@ -1,5 +1,5 @@
 using TuneTagger.Api.Models;
-using System.Diagnostics;//System.Diagnostics nos permite ejecutar procesos externos desde C#, en caso de esta aplicación fpcalc.exe
+using TuneTagger.Api.Services;
 
 // Librerías necesarias para la compresión de datos y el manejo de encabezados HTTP. Todo esto para el uso e integración de AcoustID
 using System.IO.Compression; //System.IO.Compression nos permite trabajar con archivos comprimidos, como zip, en C#. En este caso, se utiliza para comprimir la petición POST a AcoustID, ya que la API de AcoustID requiere que los datos se envíen en formato gzip.
@@ -10,7 +10,8 @@ using System.Text.Json; //System.Text.Json nos permite trabajar con JSON en C#. 
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi();// Agrega servicios para generar documentación OpenAPI (Swagger) para la API. Esto permite a los desarrolladores explorar y probar los endpoints de la API a través de una interfaz web interactiva.
+builder.Services.AddScoped<FingerprintService>(); // Agrega el servicio FingerprintService al contenedor de inyección de dependencias con un tiempo de vida "scoped". Esto significa que se creará una nueva instancia del servicio para cada solicitud HTTP, lo que es útil para servicios que manejan datos específicos de la solicitud.
 
 var app = builder.Build();
 
@@ -50,7 +51,9 @@ app.MapGet("/api/tracks/mock-analysis", () =>
 .WithName("GetMockTrackAnalysis");
 
 // Endpoint para analizar una pista de música subida por el usuario
-app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configuration) =>
+app.MapPost("/api/tracks/analyze", async (
+    IFormFile file, IConfiguration configuration,
+    FingerprintService fingerprintService) =>
 {
     if (file == null || file.Length == 0)
     {
@@ -74,25 +77,7 @@ app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configu
         });
     }
 
-    var fpcalcPath = configuration["Fingerprinting:FpcalcPath"]; // Obtener la ruta del ejecutable fpcalc.exe desde la configuración. Actualmente está pensada para desarrollo en Windows, pero a futuro cambiará para Linux, pues se usará docker y se instalará fpcalc en la imagen de docker.
-
-    // Verificar si la ruta de fpcalc está configurada
-    if (string.IsNullOrWhiteSpace(fpcalcPath))
-    {
-        return Results.Problem("fpcalc path is not configured, please read the README.md file located in backed/TuneTagger.Api/Tools for instructions on how to set it up.");
-    }
-
-    // Verificar si la ruta de fpcalc es relativa y convertirla a una ruta absoluta basada en el directorio base de la aplicación
-    if (!Path.IsPathRooted(fpcalcPath))
-    {
-        fpcalcPath = Path.Combine(AppContext.BaseDirectory, fpcalcPath);
-    }
-
-    // Verificar si el archivo fpcalc existe en la ruta especificada
-    if (!File.Exists(fpcalcPath))
-    {
-        return Results.Problem($"fpcalc was not found at path: {fpcalcPath}");
-    }
+//Desde acá
 
     // Crear un directorio temporal para almacenar el archivo subido antes de procesarlo
     var tempDirectory = Path.Combine(Path.GetTempPath(), "TuneTagger");
@@ -106,61 +91,17 @@ app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configu
 
     try
     {
+
         // Guardar el archivo subido en el archivo temporal
         await using (var stream = File.Create(tempFilePath))
         {
             await file.CopyToAsync(stream);
         }
 
-        // Configurar la información de inicio del proceso para ejecutar fpcalc.exe con el archivo temporal como argumento
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = fpcalcPath,
-            Arguments = $"\"{tempFilePath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var fingerprintResult = await fingerprintService.GenerateAsync(tempFilePath);
 
-        // Iniciar el proceso fpcalc.exe y capturar su salida
-        using var process = Process.Start(processStartInfo);
-
-        if (process is null)
-        {
-            return Results.Problem("Could not start fpcalc process.");
-        }
-
-        var output = await process.StandardOutput.ReadToEndAsync();
-        var error = await process.StandardError.ReadToEndAsync();
-
-        await process.WaitForExitAsync();
-
-        // Verificar si el proceso fpcalc.exe terminó con un código de salida distinto de cero, lo que indica un error
-        if (process.ExitCode != 0)
-        {
-            return Results.Problem($"fpcalc failed: {error}");
-        }
-
-        var lines = output.Split(
-            Environment.NewLine,
-            StringSplitOptions.RemoveEmptyEntries
-        );
-
-        // Extraer la duración y la huella digital (fingerprint) de la salida de fpcalc.exe
-        var duration = lines
-            .FirstOrDefault(line => line.StartsWith("DURATION="))
-            ?.Replace("DURATION=", "");
-
-        var fingerprint = lines
-            .FirstOrDefault(line => line.StartsWith("FINGERPRINT="))
-            ?.Replace("FINGERPRINT=", "");
-
-        // Verificar si se pudo extraer la duración y la huella digital correctamente
-        if (string.IsNullOrWhiteSpace(duration) || string.IsNullOrWhiteSpace(fingerprint))
-        {
-            return Results.Problem("Could not parse fpcalc output.");
-        }
+        var duration = fingerprintResult.Duration;
+        var fingerprint = fingerprintResult.Fingerprint;
 
         // Obtener la URL base, que tenemos en appsettings.Development.json, y la clave de API de AcoustID, que almacenamos con dotnet user-secrets.
         var acoustIdBaseUrl = configuration["AcoustId:BaseUrl"];
