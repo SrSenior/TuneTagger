@@ -6,6 +6,8 @@ using System.IO.Compression; //System.IO.Compression nos permite trabajar con ar
 using System.Net.Http.Headers; //System.Net.Http.Headers nos permite trabajar con encabezados HTTP en C#. En este caso, se utiliza para establecer el tipo de compresión que vamos a usar en la petición a AcoustID
 using System.Text; //System.Text nos permite trabajar con codificaciones de texto en C#. 
 
+using System.Text.Json; //System.Text.Json nos permite trabajar con JSON en C#. En este caso, se utiliza para limpiar la respuesta de AcoustID.
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
@@ -229,16 +231,132 @@ app.MapPost("/api/tracks/analyze", async (IFormFile file, IConfiguration configu
             );
         }
 
-        // Devolver un objeto JSON con la información del archivo subido, la duración, la huella digital y la respuesta de AcoustID
+        // Analizar la respuesta JSON de AcoustID para asegurarse de que es válida y poder devolverla en la respuesta de nuestra API
+        using var acoustIdDocument = JsonDocument.Parse(acoustIdJson);
+        var root = acoustIdDocument.RootElement;
+
+        // Verificar si la respuesta de AcoustID contiene la propiedad "status" y si su valor es "ok"
+        if (!root.TryGetProperty("status", out var acoustIdStatus) ||
+            acoustIdStatus.GetString() != "ok")
+        {
+            return Results.Problem("AcoustID returned an invalid response.");
+        }
+
+        // Verificar si la respuesta de AcoustID contiene la propiedad "results" y si es un arreglo no vacío
+        if (!root.TryGetProperty("results", out var results) ||
+            results.ValueKind != JsonValueKind.Array ||
+            results.GetArrayLength() == 0)
+        {
+            return Results.NotFound(new
+            {
+                originalFileName = file.FileName,
+                status = "not-found",
+                message = "No matches were found for this audio file."
+            });
+        }
+
+        JsonElement bestResult = default; // Variable para almacenar el mejor resultado de AcoustID
+        var bestScore = -1.0; // Variable para almacenar la mejor puntuación de coincidencia encontrada
+        var hasBestResult = false; // Variable para indicar si se ha encontrado un mejor resultado
+
+        // Iterar sobre los resultados devueltos por AcoustID para encontrar el resultado con la mejor puntuación (score)
+        foreach (var result in results.EnumerateArray())
+        {
+            if (result.TryGetProperty("score", out var scoreProperty) &&
+                scoreProperty.TryGetDouble(out var score) &&
+                score > bestScore)
+            {
+                bestScore = score;
+                bestResult = result;
+                hasBestResult = true;
+            }
+        }
+
+        // Verificar si se encontró un mejor resultado con una puntuación válida
+        if (!hasBestResult)
+        {
+            return Results.NotFound(new
+            {
+                originalFileName = file.FileName,
+                status = "not-found",
+                message = "No valid match score was found."
+            });
+        }
+
+        // Verificar si el mejor resultado contiene la propiedad "recordings" y si es un arreglo no vacío
+        if (!bestResult.TryGetProperty("recordings", out var recordings) ||
+            recordings.ValueKind != JsonValueKind.Array ||
+            recordings.GetArrayLength() == 0)
+        {
+            return Results.NotFound(new
+            {
+                originalFileName = file.FileName,
+                confidence = bestScore,
+                status = "not-found",
+                message = "A match was found, but it did not include recording metadata."
+            });
+        }
+
+        var recording = recordings[0];// Tomar el primer resultado de grabación como el mejor resultado
+
+        // Intentar obtener el título de la grabación del resultado de AcoustID, si está disponible
+        var title = recording.TryGetProperty("title", out var titleProperty)
+            ? titleProperty.GetString()
+            : null;
+        
+        string? artist = null;
+
+        // Intentar obtener el nombre del primer artista del resultado de AcoustID, si está disponible
+        if (recording.TryGetProperty("artists", out var artists) &&
+            artists.ValueKind == JsonValueKind.Array &&
+            artists.GetArrayLength() > 0)
+        {
+            var firstArtist = artists[0];
+
+            if (firstArtist.TryGetProperty("name", out var artistNameProperty))
+            {
+                artist = artistNameProperty.GetString();
+            }
+        }
+
+        string? album = null;
+
+        // Intentar obtener el título del primer grupo de lanzamiento (release group) del resultado de AcoustID, si está disponible
+        if (recording.TryGetProperty("releasegroups", out var releaseGroups) &&
+            releaseGroups.ValueKind == JsonValueKind.Array &&
+            releaseGroups.GetArrayLength() > 0)
+        {
+            var firstReleaseGroup = releaseGroups[0];
+
+            if (firstReleaseGroup.TryGetProperty("title", out var albumTitleProperty))
+            {
+                album = albumTitleProperty.GetString();
+            }
+        }
+
+        title ??= "Unknown Title";
+        artist ??= "Unknown Artist";
+        album ??= "Unknown Album";
+
+        var suggestedFileName = $"{artist} - {title}{fileExtension}";
+
+        // Reemplazar caracteres inválidos en el nombre de archivo sugerido con guiones bajos para asegurar que sea un nombre de archivo válido
+        foreach (var invalidChar in Path.GetInvalidFileNameChars())
+        {
+            suggestedFileName = suggestedFileName.Replace(invalidChar, '_');
+        }
+
+
+        // Devolver un objeto JSON con la información del archivo subido, el título, el artista, el álbum, el nombre de archivo sugerido, la confianza y el estado de coincidencia
         return Results.Ok(new
         {
             originalFileName = file.FileName,
-            contentType = file.ContentType,
-            sizeInBytes = file.Length,
-            duration,
-            fingerprint,
-            acoustIdRawResponse = acoustIdJson,
-            status = "acoustid-lookup-completed"
+            title,
+            artist,
+            album,
+            suggestedFileName,
+            confidence = bestScore,
+            status = "matched"
         });
     
     }
