@@ -18,3 +18,5 @@ En csproj añadimos una indicación de que fpcalc.exe se copiara a backend/TuneT
 
 25/06
 La URL base de AcoustID se colocó en `appsettings.Development.json` porque es configuración pública y puede cambiar entre ambientes. En cambio, la API key no se colocó en el archivo de configuración porque es un valor sensible que no debe subirse al repositorio. Para desarrollo local se usará `dotnet user-secrets`, y para Docker o producción se podrán usar variables de entorno.
+
+26/06
