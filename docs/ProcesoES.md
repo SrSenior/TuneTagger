@@ -20,3 +20,10 @@ En csproj añadimos una indicación de que fpcalc.exe se copiara a backend/TuneT
 La URL base de AcoustID se colocó en `appsettings.Development.json` porque es configuración pública y puede cambiar entre ambientes. En cambio, la API key no se colocó en el archivo de configuración porque es un valor sensible que no debe subirse al repositorio. Para desarrollo local se usará `dotnet user-secrets`, y para Docker o producción se podrán usar variables de entorno.
 
 26/06
+Se conectó con AcoustID, además se hace la compresión de la solicitud POST con compresión con gzip, como lo recomienda AcosusID. También se escoge solamente la mejor coincidencia que devuelve la API.
+
+27/06
+Se modulariza el código. Por el momento la idea que se tiene es usar uno de las clases para hacer el uso de fpcalc y otra para pasar los datos a AcoustID (Y dentro de esta seccionarlo en 3: una función para compresión, una función para enviar la fingerprint a AcoustID y recibir la respuesta, y una función para limpiar el JSON que obtuvimos)
+
+28/06
+Hoy planeo hacer la segmentación de AcoustIdService.cs, es decir, tener una función para la compresión con gzip y una para limpiar el JSON que retorna AcoustID
