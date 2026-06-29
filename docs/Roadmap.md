@@ -39,13 +39,12 @@ Generación de nombre sugerido
 - Ejecutar `fpcalc` desde C#.
 - Obtener `duration` y `fingerprint`.
 - Consultar AcoustID usando esos datos.
-
-### Próximos pasos
-
 - Procesar la respuesta de AcoustID.
 - Seleccionar la coincidencia con mayor confianza.
 - Devolver una respuesta limpia al frontend.
 - Generar un `suggestedFileName`.
+
+### Próximos pasos
 
 ---
 
