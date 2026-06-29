@@ -27,3 +27,5 @@ Se modulariza el código. Por el momento la idea que se tiene es usar uno de las
 
 28/06
 Hoy planeo hacer la segmentación de AcoustIdService.cs, es decir, tener una función para la compresión con gzip y una para limpiar el JSON que retorna AcoustID
+Se modularizó lo que se tenía planeado y se concluye la Etapa A: Frontend I. Con esto podemos empezar la Etapa B: Frontend.
+Con pnpm como administrador de paquetes se hizo la instalación de lo necesario para dar comienzo a la etapa B del proyecto.
