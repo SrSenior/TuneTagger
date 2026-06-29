@@ -50,8 +50,8 @@ public class AcoustIdService
         ));
 
         // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
-        var content = CompressStringToGzip(formBody);
-
+        using var content = CompressStringToGzip(formBody);
+        
          // Crear un cliente HTTP para enviar la solicitud POST a la API de AcoustID
         using var httpClient = new HttpClient();
 
@@ -87,6 +87,42 @@ public class AcoustIdService
             return null;
         }
 
+        return ExtractBestMatch(results);
+        
+    }
+    
+    // Método para comprimir una cadena de consulta a formato GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+    private static ByteArrayContent CompressStringToGzip(string formBody)
+    {
+        // Codificar la cadena de consulta a bytes utilizando UTF-8
+        var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
+
+        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+        byte[] compressedBody;
+
+        using (var outputStream = new MemoryStream())
+        {
+            using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                gzipStream.Write(formBodyBytes, 0, formBodyBytes.Length);
+            }
+
+            compressedBody = outputStream.ToArray();
+        }
+
+        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
+        var content = new ByteArrayContent(compressedBody);
+
+        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+        content.Headers.ContentEncoding.Add("gzip");
+        
+        return content;
+    }
+
+    private static AcoustIdBestMatch? ExtractBestMatch (JsonElement results)
+    {
+        
         JsonElement bestResult = default; // Variable para almacenar el mejor resultado de AcoustID
         var bestScore = -1.0; // Variable para almacenar la mejor puntuación de coincidencia encontrada
         var hasBestResult = false; // Variable para indicar si se ha encontrado un mejor resultado
@@ -159,43 +195,13 @@ public class AcoustIdService
         artist ??= "Unknown Artist";
         album ??= "Unknown Album";
 
-        // Obtener la URL base, que tenemos en appsettings.Development.json, y la clave de API de AcoustID, que almacenamos con dotnet user-secrets.
-        // Devolver un modelo AcoustIdBestMatch con la información del archivo subido, el título, el artista, el álbum y la confianza
+        // Devolver un objeto AcoustIdBestMatch con la información del mejor resultado encontrado
         return new AcoustIdBestMatch(
             title,
             artist,
             album,
             bestScore
         );
-    }
-    
-    // Método para comprimir una cadena de consulta a formato GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
-    private ByteArrayContent CompressStringToGzip(string formBody)
-    {
-        // Codificar la cadena de consulta a bytes utilizando UTF-8
-        var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
-
-        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
-        byte[] compressedBody;
-
-        using (var outputStream = new MemoryStream())
-        {
-            using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
-            {
-                gzipStream.Write(formBodyBytes, 0, formBodyBytes.Length);
-            }
-
-            compressedBody = outputStream.ToArray();
-        }
-
-        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
-        var content = new ByteArrayContent(compressedBody);
-
-        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
-        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
-        content.Headers.ContentEncoding.Add("gzip");
-        
-        return content;
     }
 
 }
