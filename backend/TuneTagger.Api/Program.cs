@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();// Agrega servicios para generar documentación OpenAPI (Swagger) para la API. Esto permite a los desarrolladores explorar y probar los endpoints de la API a través de una interfaz web interactiva.
 builder.Services.AddScoped<FingerprintService>(); // Agrega el servicio FingerprintService al contenedor de inyección de dependencias con un tiempo de vida "scoped". Esto significa que se creará una nueva instancia del servicio para cada solicitud HTTP, lo que es útil para servicios que manejan datos específicos de la solicitud.
-builder.Services.AddScoped<AcoustIdService>(); // Agrega el servicio AcoustIdService al contenedor de inyección de dependencias con un tiempo de vida "scoped". Al igual que FingerprintService, se creará una nueva instancia del servicio para cada solicitud HTTP, lo que es útil para servicios que interactúan con APIs externas o manejan datos específicos de la solicitud.
+builder.Services.AddHttpClient<AcoustIdService>(); // Agrega el servicio AcoustIdService al contenedor de inyección de dependencias y configura un cliente HTTP para él. Esto permite que el servicio realice solicitudes HTTP a la API de AcoustID para buscar coincidencias de huellas digitales de audio.
 
 var app = builder.Build();
 

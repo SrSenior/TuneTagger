@@ -11,10 +11,14 @@ namespace TuneTagger.Api.Services;
 
 public class AcoustIdService
 {
+    // Servicio para interactuar con la API de AcoustID, que permite buscar coincidencias de huellas digitales de audio y obtener información sobre pistas de música.
     private readonly IConfiguration _configuration;
-    public AcoustIdService(IConfiguration configuration)
+    private readonly HttpClient _httpClient;
+
+    public AcoustIdService(IConfiguration configuration, HttpClient httpClient)
     {
         _configuration = configuration;
+        _httpClient = httpClient;
     }
 
     public async Task<AcoustIdBestMatch?> FindBestMatchAsync(string duration, string fingerprint)
@@ -52,11 +56,9 @@ public class AcoustIdService
         // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
         using var content = CompressStringToGzip(formBody);
         
-         // Crear un cliente HTTP para enviar la solicitud POST a la API de AcoustID
-        using var httpClient = new HttpClient();
-
-        // Enviar la solicitud POST a la API de AcoustID y obtener la respuesta
-        var acoustIdResponse = await httpClient.PostAsync(acoustIdBaseUrl, content);
+        // Enviar la solicitud POST a la API de AcoustID con los datos comprimidos
+        var acoustIdResponse = await _httpClient.PostAsync(acoustIdBaseUrl, content);
+        
         // Leer la respuesta de la API de AcoustID como una cadena JSON
         var acoustIdJson = await acoustIdResponse.Content.ReadAsStringAsync();  
 
