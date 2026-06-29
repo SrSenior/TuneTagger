@@ -46,7 +46,7 @@ Generación de nombre sugerido
 
 ### Próximos pasos
 
-Ninguno, se concluyó la Etapa A: Backemd :)
+Ninguno, se concluyó la Etapa A: Backemd I :)
 
 ---
 

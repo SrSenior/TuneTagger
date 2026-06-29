@@ -1,15 +1,12 @@
-# Created by https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudiocode,node,react
-# Edit at https://www.toptal.com/developers/gitignore?templates=csharp,dotnetcore,visualstudiocode,node,react
+# =========================
+# TuneTagger project-specific
+# =========================
 
 # External binaries
 backend/TuneTagger.Api/Tools/fpcalc.exe
 backend/TuneTagger.Api/Tools/fpcalc
 
-## Elementos añadidos manualmente
-.env
-.env.*
-!.env.example
-
+# Local audio files
 *.mp3
 *.wav
 *.flac
@@ -17,12 +14,53 @@ backend/TuneTagger.Api/Tools/fpcalc
 *.aac
 *.ogg
 
+# Local app data
 history.json
 settings.local.json
 
-dist/
+# Release artifacts
 publish/
 releases/
+
+# =========================
+# Frontend - Vite / React / pnpm
+# =========================
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Vite cache
+.vite/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# pnpm local store
+.pnpm-store/
+
+# Avoid mixing package managers
+package-lock.json
+yarn.lock
+
+# Keep this tracked:
+# pnpm-lock.yaml
+
+
+# Created by https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudiocode,node,react,windows
+# Edit at https://www.toptal.com/developers/gitignore?templates=csharp,dotnetcore,visualstudiocode,node,react,windows
 
 ### Csharp ###
 ## Ignore Visual Studio temporary files, build results, and
@@ -595,4 +633,25 @@ sketch
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudiocode,node,react
+### Windows ###
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+
+# Windows shortcuts
+*.lnk
+
+# End of https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudiocode,node,react,windows
