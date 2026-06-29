@@ -3,9 +3,9 @@ using TuneTagger.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();// Agrega servicios para generar documentación OpenAPI (Swagger) para la API. Esto permite a los desarrolladores explorar y probar los endpoints de la API a través de una interfaz web interactiva.
-builder.Services.AddScoped<FingerprintService>(); // Agrega el servicio FingerprintService al contenedor de inyección de dependencias con un tiempo de vida "scoped". Esto significa que se creará una nueva instancia del servicio para cada solicitud HTTP, lo que es útil para servicios que manejan datos específicos de la solicitud.
-builder.Services.AddHttpClient<AcoustIdService>(); // Agrega el servicio AcoustIdService al contenedor de inyección de dependencias y configura un cliente HTTP para él. Esto permite que el servicio realice solicitudes HTTP a la API de AcoustID para buscar coincidencias de huellas digitales de audio.
+builder.Services.AddOpenApi(); // Agrega los servicios que generan el documento OpenAPI de la API; no incluye por sí solo una interfaz Swagger UI.
+builder.Services.AddScoped<FingerprintService>(); // Agrega FingerprintService al contenedor de inyección de dependencias con un tiempo de vida "scoped", por lo que se crea una instancia por solicitud HTTP.
+builder.Services.AddHttpClient<AcoustIdService>(); // Registra AcoustIdService y le proporciona un HttpClient administrado para consultar la API de AcoustID.
 
 var app = builder.Build();
 
@@ -16,7 +16,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Endpoint de prueba para verificar que la API está funcionando correctamente
+// Endpoint de prueba para verificar que la API está funcionando correctamente.
 app.MapGet("/api/health", () =>
 {
     return Results.Ok(new
@@ -27,7 +27,7 @@ app.MapGet("/api/health", () =>
 })
 .WithName("GetHealth");
 
-// Endpoint de prueba para simular el análisis de una pista de música y devolver resultados ficticios
+// Endpoint de prueba que simula el análisis de una pista y devuelve datos ficticios.
 app.MapGet("/api/tracks/mock-analysis", () =>
 {
     var result = new TrackAnalysisResult(
@@ -44,7 +44,7 @@ app.MapGet("/api/tracks/mock-analysis", () =>
 })
 .WithName("GetMockTrackAnalysis");
 
-// Endpoint para analizar una pista de música subida por el usuario
+// Endpoint para analizar una pista de música subida por el usuario.
 app.MapPost("/api/tracks/analyze", async (
     IFormFile file,
     FingerprintService fingerprintService,
@@ -59,10 +59,10 @@ app.MapPost("/api/tracks/analyze", async (
         });
     }
 
-    var allowedExtensions = new[] { ".mp3", ".wav", ".flac", ".m4a", ".ogg" }; // Lista de extensiones de archivo de audio permitidas
-    var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant(); // Obtener la extensión del archivo subido y convertirla a minúsculas para comparación
+    var allowedExtensions = new[] { ".mp3", ".wav", ".flac", ".m4a", ".ogg" }; // Lista de extensiones de audio permitidas.
+    var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant(); // Normaliza la extensión para compararla sin distinguir mayúsculas.
 
-    // Verificar si la extensión del archivo subido está en la lista de extensiones permitidas
+    // Verifica si la extensión del archivo está en la lista de formatos permitidos.
     if (!allowedExtensions.Contains(fileExtension))
     {
         return Results.BadRequest(new
@@ -72,11 +72,11 @@ app.MapPost("/api/tracks/analyze", async (
         });
     }
 
-    // Crear un directorio temporal para almacenar el archivo subido antes de procesarlo
+    // Crea un directorio temporal para almacenar el archivo durante el procesamiento.
     var tempDirectory = Path.Combine(Path.GetTempPath(), "TuneTagger");
     Directory.CreateDirectory(tempDirectory);
 
-    // Generar un nombre de archivo temporal único para el archivo subido, utilizando un GUID y la extensión del archivo original
+    // Genera un nombre temporal único y conserva la extensión original normalizada.
     var tempFilePath = Path.Combine(
         tempDirectory,
         $"{Guid.NewGuid()}{fileExtension}"
@@ -84,22 +84,21 @@ app.MapPost("/api/tracks/analyze", async (
 
     try
     {
-
-        // Guardar el archivo subido en el archivo temporal
+        // Guarda el archivo subido para que fpcalc pueda procesarlo desde el sistema de archivos.
         await using (var stream = File.Create(tempFilePath))
         {
             await file.CopyToAsync(stream);
         }
 
-        // Llamar al servicio FingerprintService para generar la huella digital del archivo de audio temporal
-        var fingerprintResult = await fingerprintService.GenerateAsync(tempFilePath);        
+        // Genera la huella digital del archivo de audio temporal.
+        var fingerprintResult = await fingerprintService.GenerateAsync(tempFilePath);
 
         var bestMatch = await acoustIdService.FindBestMatchAsync(
             fingerprintResult.Duration,
             fingerprintResult.Fingerprint
         );
 
-        // Verificar si se encontró un mejor resultado de coincidencia para el archivo de audio subido
+        // Devuelve 404 cuando AcoustID no encuentra una coincidencia utilizable.
         if (bestMatch is null)
         {
             return Results.NotFound(new
@@ -110,7 +109,7 @@ app.MapPost("/api/tracks/analyze", async (
             });
         }
 
-        // Generar un nombre de archivo sugerido basado en el artista y el título del mejor resultado encontrado, reemplazando caracteres inválidos para nombres de archivo con guiones bajos
+        // Sustituye caracteres inválidos para que el nombre sugerido pueda usarse en el sistema de archivos.
         string suggestedFileName = $"{bestMatch.Artist} - {bestMatch.Title}{fileExtension}";
         foreach (var invalidChar in Path.GetInvalidFileNameChars())
         {
@@ -137,7 +136,7 @@ app.MapPost("/api/tracks/analyze", async (
     }
 })
 .WithName("AnalyzeTrack")
-.DisableAntiforgery();// Disable CSRF protection for this endpoint since it's meant to be called from a client application
-
+// La API no usa autenticación basada en cookies ni tokens antiforgery para esta carga multipart.
+.DisableAntiforgery();
 
 app.Run();

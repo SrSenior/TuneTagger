@@ -1,17 +1,16 @@
 using TuneTagger.Api.Models;
 
-// Librerías necesarias para la compresión de datos y el manejo de encabezados HTTP. Todo esto para el uso e integración de AcoustID
-using System.IO.Compression; //System.IO.Compression nos permite trabajar con archivos comprimidos, como zip, en C#. En este caso, se utiliza para comprimir la petición POST a AcoustID, ya que la API de AcoustID requiere que los datos se envíen en formato gzip.
-using System.Net.Http.Headers; //System.Net.Http.Headers nos permite trabajar con encabezados HTTP en C#. En este caso, se utiliza para establecer el tipo de compresión que vamos a usar en la petición a AcoustID
-using System.Text; //System.Text nos permite trabajar con codificaciones de texto en C#. 
-
-using System.Text.Json; //System.Text.Json nos permite trabajar con JSON en C#. En este caso, se utiliza para limpiar la respuesta de AcoustID.
+// Librerías utilizadas para comprimir la solicitud y procesar la respuesta de AcoustID.
+using System.IO.Compression; // Permite comprimir con gzip el formulario que contiene el fingerprint.
+using System.Net.Http.Headers; // Permite declarar el tipo de contenido y la codificación gzip de la solicitud.
+using System.Text; // Permite convertir el formulario a bytes UTF-8 antes de comprimirlo.
+using System.Text.Json; // Permite validar la respuesta JSON y extraer la mejor coincidencia.
 
 namespace TuneTagger.Api.Services;
 
 public class AcoustIdService
 {
-    // Servicio para interactuar con la API de AcoustID, que permite buscar coincidencias de huellas digitales de audio y obtener información sobre pistas de música.
+    // Servicio que consulta AcoustID y convierte su respuesta en el modelo usado por la API.
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
 
@@ -26,19 +25,19 @@ public class AcoustIdService
         var acoustIdBaseUrl = _configuration["AcoustId:BaseUrl"];
         var acoustIdApiKey = _configuration["AcoustId:ApiKey"];
 
-        // Verificar si la URL base de AcoustID está configurada
+        // Verifica que la URL base de AcoustID esté configurada.
         if (string.IsNullOrWhiteSpace(acoustIdBaseUrl))
         {
             throw new InvalidOperationException("AcoustID base URL is not configured.");
         }
 
-        // Verificar si la clave de API de AcoustID está configurada
+        // Verifica que la clave de cliente de AcoustID esté configurada.
         if (string.IsNullOrWhiteSpace(acoustIdApiKey))
         {
             throw new InvalidOperationException("AcoustID API key is not configured.");
         }
 
-        // Preparar los datos del formulario para enviar a la API de AcoustID.
+        // Prepara los campos requeridos para buscar el fingerprint y solicitar metadatos musicales.
         var formData = new Dictionary<string, string>
         {
             ["client"] = acoustIdApiKey,
@@ -48,21 +47,21 @@ public class AcoustIdService
             ["format"] = "json"
         };
 
-        // Convertir los datos del formulario a una cadena de consulta URL codificada
+        // Codifica los campos con el formato application/x-www-form-urlencoded.
         var formBody = string.Join("&", formData.Select(pair =>
             $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"
         ));
 
-        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+        // AcoustID recomienda gzip para solicitudes con fingerprints largos.
         using var content = CompressStringToGzip(formBody);
-        
-        // Enviar la solicitud POST a la API de AcoustID con los datos comprimidos
-        var acoustIdResponse = await _httpClient.PostAsync(acoustIdBaseUrl, content);
-        
-        // Leer la respuesta de la API de AcoustID como una cadena JSON
-        var acoustIdJson = await acoustIdResponse.Content.ReadAsStringAsync();  
 
-        // Verificar si la respuesta de la API de AcoustID indica un error (código de estado HTTP distinto de 2xx)
+        // Envía la consulta comprimida a AcoustID.
+        var acoustIdResponse = await _httpClient.PostAsync(acoustIdBaseUrl, content);
+
+        // Conserva el cuerpo para incluir la respuesta de AcoustID en posibles errores.
+        var acoustIdJson = await acoustIdResponse.Content.ReadAsStringAsync();
+
+        // Interrumpe el análisis si AcoustID responde con un código HTTP no exitoso.
         if (!acoustIdResponse.IsSuccessStatusCode)
         {
             throw new InvalidOperationException(
@@ -70,18 +69,18 @@ public class AcoustIdService
             );
         }
 
-        // Analizar la respuesta JSON de AcoustID para asegurarse de que es válida y poder devolverla en la respuesta de nuestra API
+        // Analiza el JSON para validar su estructura y extraer los campos relevantes.
         using var acoustIdDocument = JsonDocument.Parse(acoustIdJson);
         var root = acoustIdDocument.RootElement;
 
-        // Verificar si la respuesta de AcoustID contiene la propiedad "status" y si su valor es "ok"
+        // AcoustID debe confirmar el éxito mediante la propiedad status.
         if (!root.TryGetProperty("status", out var acoustIdStatus) ||
             acoustIdStatus.GetString() != "ok")
         {
             throw new InvalidOperationException("AcoustID returned an invalid response.");
         }
 
-        // Verificar si la respuesta de AcoustID contiene la propiedad "results" y si es un arreglo no vacío
+        // Una respuesta válida sin resultados representa una pista sin coincidencias.
         if (!root.TryGetProperty("results", out var results) ||
             results.ValueKind != JsonValueKind.Array ||
             results.GetArrayLength() == 0)
@@ -90,16 +89,14 @@ public class AcoustIdService
         }
 
         return ExtractBestMatch(results);
-        
     }
-    
-    // Método para comprimir una cadena de consulta a formato GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+
     private static ByteArrayContent CompressStringToGzip(string formBody)
     {
-        // Codificar la cadena de consulta a bytes utilizando UTF-8
+        // Convierte el formulario a UTF-8 antes de comprimirlo.
         var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
 
-        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+        // Comprime el cuerpo y mantiene abierto el MemoryStream hasta copiar sus bytes.
         byte[] compressedBody;
 
         using (var outputStream = new MemoryStream())
@@ -112,24 +109,21 @@ public class AcoustIdService
             compressedBody = outputStream.ToArray();
         }
 
-        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
+        // Declara tanto el formato del formulario como la compresión aplicada al cuerpo.
         var content = new ByteArrayContent(compressedBody);
-
-        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
         content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
         content.Headers.ContentEncoding.Add("gzip");
-        
+
         return content;
     }
 
-    private static AcoustIdBestMatch? ExtractBestMatch (JsonElement results)
+    private static AcoustIdBestMatch? ExtractBestMatch(JsonElement results)
     {
-        
-        JsonElement bestResult = default; // Variable para almacenar el mejor resultado de AcoustID
-        var bestScore = -1.0; // Variable para almacenar la mejor puntuación de coincidencia encontrada
-        var hasBestResult = false; // Variable para indicar si se ha encontrado un mejor resultado
+        JsonElement bestResult = default;
+        var bestScore = -1.0;
+        var hasBestResult = false;
 
-        // Iterar sobre los resultados devueltos por AcoustID para encontrar el resultado con la mejor puntuación (score)
+        // Ante un empate se conserva el primer resultado devuelto por AcoustID.
         foreach (var result in results.EnumerateArray())
         {
             if (result.TryGetProperty("score", out var scoreProperty) &&
@@ -142,13 +136,13 @@ public class AcoustIdService
             }
         }
 
-        // Verificar si se encontró un mejor resultado con una puntuación válida
+        // Sin una puntuación numérica no se puede elegir una coincidencia válida.
         if (!hasBestResult)
         {
             return null;
         }
 
-        // Verificar si el mejor resultado contiene la propiedad "recordings" y si es un arreglo no vacío
+        // El resultado necesita al menos una grabación para producir metadatos de la pista.
         if (!bestResult.TryGetProperty("recordings", out var recordings) ||
             recordings.ValueKind != JsonValueKind.Array ||
             recordings.GetArrayLength() == 0)
@@ -156,16 +150,17 @@ public class AcoustIdService
             return null;
         }
 
-        var recording = recordings[0];// Tomar el primer resultado de grabación como el mejor resultado
+        // Se usa la primera grabación del resultado con mayor puntuación.
+        var recording = recordings[0];
 
-        // Intentar obtener el título de la grabación del resultado de AcoustID, si está disponible
+        // Obtiene el título de la primera grabación cuando está disponible.
         var title = recording.TryGetProperty("title", out var titleProperty)
             ? titleProperty.GetString()
             : null;
-        
+
         string? artist = null;
 
-        // Intentar obtener el nombre del primer artista del resultado de AcoustID, si está disponible
+        // Usa el primer artista asociado a la grabación.
         if (recording.TryGetProperty("artists", out var artists) &&
             artists.ValueKind == JsonValueKind.Array &&
             artists.GetArrayLength() > 0)
@@ -180,7 +175,7 @@ public class AcoustIdService
 
         string? album = null;
 
-        // Intentar obtener el título del primer grupo de lanzamiento (release group) del resultado de AcoustID, si está disponible
+        // Usa el primer grupo de lanzamiento como álbum cuando está disponible.
         if (recording.TryGetProperty("releasegroups", out var releaseGroups) &&
             releaseGroups.ValueKind == JsonValueKind.Array &&
             releaseGroups.GetArrayLength() > 0)
@@ -197,7 +192,7 @@ public class AcoustIdService
         artist ??= "Unknown Artist";
         album ??= "Unknown Album";
 
-        // Devolver un objeto AcoustIdBestMatch con la información del mejor resultado encontrado
+        // Devuelve una representación estable aunque AcoustID omita metadatos opcionales.
         return new AcoustIdBestMatch(
             title,
             artist,
@@ -205,5 +200,4 @@ public class AcoustIdService
             bestScore
         );
     }
-
 }
