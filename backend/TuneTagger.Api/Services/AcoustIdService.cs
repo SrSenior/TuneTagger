@@ -49,30 +49,11 @@ public class AcoustIdService
             $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"
         ));
 
-        // Codificar la cadena de consulta a bytes utilizando UTF-8
-        var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
-
         // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
-        byte[] compressedBody;
+        var content = CompressStringToGzip(formBody);
 
-        using (var outputStream = new MemoryStream())
-        {
-            using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
-            {
-                gzipStream.Write(formBodyBytes, 0, formBodyBytes.Length);
-            }
-
-            compressedBody = outputStream.ToArray();
-        }
-
-        // Crear un cliente HTTP para enviar la solicitud POST a la API de AcoustID
+         // Crear un cliente HTTP para enviar la solicitud POST a la API de AcoustID
         using var httpClient = new HttpClient();
-        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
-        using var content = new ByteArrayContent(compressedBody);
-
-        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
-        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
-        content.Headers.ContentEncoding.Add("gzip");
 
         // Enviar la solicitud POST a la API de AcoustID y obtener la respuesta
         var acoustIdResponse = await httpClient.PostAsync(acoustIdBaseUrl, content);
@@ -188,4 +169,33 @@ public class AcoustIdService
         );
     }
     
+    // Método para comprimir una cadena de consulta a formato GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+    private ByteArrayContent CompressStringToGzip(string formBody)
+    {
+        // Codificar la cadena de consulta a bytes utilizando UTF-8
+        var formBodyBytes = Encoding.UTF8.GetBytes(formBody);
+
+        // Comprimir los datos del formulario con GZip, siguiendo la recomendación de AcoustID para fingerprints largos.
+        byte[] compressedBody;
+
+        using (var outputStream = new MemoryStream())
+        {
+            using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                gzipStream.Write(formBodyBytes, 0, formBodyBytes.Length);
+            }
+
+            compressedBody = outputStream.ToArray();
+        }
+
+        // Establecer el encabezado Content-Encoding a gzip para indicar que los datos están comprimidos
+        var content = new ByteArrayContent(compressedBody);
+
+        // Establecer el tipo de contenido a application/x-www-form-urlencoded, que es el tipo de contenido esperado por la API de AcoustID
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+        content.Headers.ContentEncoding.Add("gzip");
+        
+        return content;
+    }
+
 }
