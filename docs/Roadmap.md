@@ -46,6 +46,8 @@ Generación de nombre sugerido
 
 ### Próximos pasos
 
+Ninguno, se concluyó la Etapa A: Backemd :)
+
 ---
 
 ## Etapa B: Frontend funcional
