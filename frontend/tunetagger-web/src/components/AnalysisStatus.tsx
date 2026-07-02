@@ -1,3 +1,4 @@
+// Solo acepta esos strings, (son valoes separados por |)
 type AnalysisStatusType =
   | 'idle'
   | 'file-selected'
@@ -11,6 +12,7 @@ type AnalysisStatusProps = {
   message?: string
 }
 
+// Diccionario que matchea cada status con label y cambia el estilo de la tarjeta acorde a estos
 const statusContent: Record<
   AnalysisStatusType,
   {
@@ -51,6 +53,7 @@ const statusContent: Record<
   },
 }
 
+// Componente que muestra el estado del análisis según StatusContent
 function AnalysisStatus({ status, message }: AnalysisStatusProps) {
   const content = statusContent[status]
 
