@@ -45,7 +45,7 @@ function UploadPanel({
                 />
             </label>
 
-        
+            //Se usa condicional para cargar el nombre del archivo seleccionado si existe, si no, no se renderiza el div que contiene el nombre del archivo.
             {selectedFile && (
                 <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
